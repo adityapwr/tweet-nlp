@@ -2,12 +2,13 @@
 import nltk
 import sys
 import re
+import json
 
-def find_highest_frequency_name(file_name):
+def find_host():
     # word count dictionary
     word_count = {}
     ignore_retweets = True
-    with open(file_name) as f:
+    with open('all_data.txt') as f:
         lines = f.read().splitlines()
         for line in lines:
             if line.startswith('RT') or ignore_retweets:
@@ -29,5 +30,9 @@ def find_highest_frequency_name(file_name):
 
     
 if __name__ == '__main__':
-    print(find_highest_frequency_name(sys.argv[1]))
+    with open('hosts.json', 'w') as f:
+        hosts = find_host()
+        print(hosts)
+        json.dump(hosts, f)
+        
     
