@@ -11,8 +11,7 @@ nlp = spacy.load("en_core_web_sm")
 def check_actor(org_name):
     org_name = org_name.lower().strip()
     search_name = org_name.replace(" ", "+")
-    result = requests.get(
-        f"https://www.imdb.com/search/name/?name={search_name}")
+    result = requests.get(f"https://www.imdb.com/search/name/?name={search_name}")
     soup = BeautifulSoup(result.text)
     all_models = soup.find_all("div", {"class": "lister-item mode-detail"})
     if len(all_models) > 0:
@@ -22,11 +21,8 @@ def check_actor(org_name):
                 return True
     return False
 
-
 with open("all_data.txt", "r") as f:
     with open("winner_2.txt", "w") as w:
-        # winner_regex = r'(winner|winners|nomminies) for (Best.+?)(,|in a)(.*) (is|are) (.*)'
-        # winner_regex_2 = r'(.+?)(,|in a)(.*) ?(at the #GoldenGlobes)? \*\*\*winners are'
         data = {}
         winners = {}
         text = f.read()
@@ -52,8 +48,8 @@ with open("all_data.txt", "r") as f:
             winner_regex_2 = r'(Best.+?)(,|in a)(.*) (is|are) (.*)'
             winner = re.search(winner_regex_2, line)
             if winner:
-                award = winner.group(1).strip().lower()
-                category = winner.group(3).strip().lower()
+                award = winner.group(1).strip()
+                category = winner.group(3).strip()
                 doc = nlp(winner.group(5))
                 for ent in doc.ents:
                     if ent.label_ == "PERSON":
@@ -71,8 +67,8 @@ with open("all_data.txt", "r") as f:
             winner_regex_3 = r'([B|b]est.*)(,|in a)(.*) [G|g]oes to ([A-Za-z]* [A-Za-z]*)'
             winner = re.search(winner_regex_3, line)
             if winner:
-                award = winner.group(1).strip().lower()
-                category = winner.group(3).strip().lower()
+                award = winner.group(1).strip()
+                category = winner.group(3).strip()
                 doc = nlp(winner.group(4))
                 for ent in doc.ents:
                     if ent.label_ == "PERSON":
@@ -87,8 +83,8 @@ with open("all_data.txt", "r") as f:
                                 category, 0) + 1
                         else:
                             data[win][award] = data[win].get(award, 0) + 1
+        
         final_winners = {}
-        json.dump(data, w, indent=4)
         winners = {key: val for key, val in winners.items() if val > 2}
         for k, v in winners.items():
             # check if person exists from imdb url
@@ -96,22 +92,29 @@ with open("all_data.txt", "r") as f:
             if check_actor(k):
                 print(f'Found {k}')
                 final_winners[k] = v
-
+            else:
+                print(f'{k} not found')
         final_awards = []
         for k, v in final_winners.items():
             max = 0
             award = ""
             category = ""
-            for k1, v1 in v:
-                for k2, v2 in v1:
-                    if v2 > max:
+            for k1, v1 in data[k].items():
+                if type(v1) is dict:
+                    for k2, v2 in v1.items():
+                        if v2 > max:
+                            max = v2
+                            award = k1
+                            category = k2
+                else:
+                    if v1 > max:
                         max = v2
                         award = k1
-                        category = k2
             final_awards.append({
                 "award": award,
                 "category": category,
                 "winner": k
             })
 
+        json.dump(final_awards, w, indent=4)
         print(json.dumps(final_awards, indent=4))
