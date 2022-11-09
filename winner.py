@@ -1,120 +1,125 @@
 import re
-import spacy
-import json
-import requests
-from bs4 import BeautifulSoup
-
-# find winners in the event and check with imdb database if the actor exists.
-nlp = spacy.load("en_core_web_sm")
+import logging
+from utils import check_actor, ner_analysis
 
 
-def check_actor(org_name):
-    org_name = org_name.lower().strip()
-    search_name = org_name.replace(" ", "+")
-    result = requests.get(f"https://www.imdb.com/search/name/?name={search_name}")
-    soup = BeautifulSoup(result.text)
-    all_models = soup.find_all("div", {"class": "lister-item mode-detail"})
-    if len(all_models) > 0:
-        for single_model in all_models:
-            name = single_model.find_all("a")[1].text.lower().strip()
-            if name == org_name:
-                return True
-    return False
-
-with open("all_data.txt", "r") as f:
-    with open("winner_2.txt", "w") as w:
-        data = {}
-        winners = {}
-        text = f.read()
-        for line in text.splitlines():
-            winner_regex = r'(winner|winners|nomminiee|nomminies) for (Best.+?)(,|in a)(.*) (is|are) (.*)'
-            winner = re.search(winner_regex, line)
-            if winner:
-                award = winner.group(2).strip()
-                category = winner.group(4).strip()
-                doc = nlp(winner.group(6))
-                for ent in doc.ents:
-                    if ent.label_ == "PERSON":
-                        win = ent.text
-                        # if ent.text not in winners:
-                        winners[win] = winners.get(win, 0) + 1
-                        data[win] = data.get(win, {})
-                        if category:
-                            data[win][award] = data[win].get(award, {})
-                            data[win][award][category] = data[win][award].get(
-                                category, 0) + 1
-                        else:
-                            data[win][award] = data[win].get(award, 0) + 1
-            winner_regex_2 = r'(Best.+?)(,|in a)(.*) (is|are) (.*)'
-            winner = re.search(winner_regex_2, line)
-            if winner:
-                award = winner.group(1).strip()
-                category = winner.group(3).strip()
-                doc = nlp(winner.group(5))
-                for ent in doc.ents:
-                    if ent.label_ == "PERSON":
-                        # if ent.text not in winners:
-                        win = ent.text
-                        # if ent.text not in winners:
-                        winners[win] = winners.get(win, 0) + 1
-                        data[win] = data.get(win, {})
-                        if category:
-                            data[win][award] = data[win].get(award, {})
-                            data[win][award][category] = data[win][award].get(
-                                category, 0) + 1
-                        else:
-                            data[win][award] = data[win].get(award, 0) + 1
-            winner_regex_3 = r'([B|b]est.*)(,|in a)(.*) [G|g]oes to ([A-Za-z]* [A-Za-z]*)'
-            winner = re.search(winner_regex_3, line)
-            if winner:
-                award = winner.group(1).strip()
-                category = winner.group(3).strip()
-                doc = nlp(winner.group(4))
-                for ent in doc.ents:
-                    if ent.label_ == "PERSON":
-                        # if ent.text not in winners:
-                        win = ent.text
-                        # if ent.text not in winners:
-                        winners[win] = winners.get(win, 0) + 1
-                        data[win] = data.get(win, {})
-                        if category:
-                            data[win][award] = data[win].get(award, {})
-                            data[win][award][category] = data[win][award].get(
-                                category, 0) + 1
-                        else:
-                            data[win][award] = data[win].get(award, 0) + 1
-        
-        final_winners = {}
-        winners = {key: val for key, val in winners.items() if val > 2}
-        for k, v in winners.items():
-            # check if person exists from imdb url
-            print(f'Checking {k}')
-            if check_actor(k):
-                print(f'Found {k}')
-                final_winners[k] = v
+def extract_data(winner_ner, winners_list, winner_map, award, category):
+    '''
+    Extract data from winner_ner and add to winners_list and winner_map
+    '''
+    for ent in winner_ner:
+        if ent.label_ == "PERSON":
+            # if ent.text not in winners_list:
+            win = ent.text
+                # if ent.text not in winners_list:
+            winners_list[win] = winners_list.get(win, 0) + 1
+            winner_map[win] = winner_map.get(win, {})
+            if category:
+                winner_map[win][award] = winner_map[win].get(
+                    award, {})
+                winner_map[win][award][category] = winner_map[win][award].get(
+                    category, 0) + 1
             else:
-                print(f'{k} not found')
-        final_awards = []
-        for k, v in final_winners.items():
-            max = 0
-            award = ""
-            category = ""
-            for k1, v1 in data[k].items():
-                if type(v1) is dict:
-                    for k2, v2 in v1.items():
-                        if v2 > max:
-                            max = v2
-                            award = k1
-                            category = k2
-                else:
-                    if v1 > max:
-                        max = v2
-                        award = k1
-            final_awards.append({
-                "award": award,
-                "category": category,
-                "winner": k
-            })
+                winner_map[win][award] = winner_map[win].get(
+                    award, 0) + 1
+    
+def validate_winners(winners_list):
+    '''
+    validate_winners function is used to validate the winner list against IMDB
+    input : winners_list
+    output : list of validated winners
+    '''
+    logging.info("Validating winners against IMDB")
+    final_winners_list = {}
+    for key, val in winners_list.items():
+        if check_actor(key):
+            final_winners_list[key] = val
+    return final_winners_list
 
-        json.dump(final_awards, w, indent=4)
-        print(json.dumps(final_awards, indent=4))
+
+def transform_data(final_winners_list, winner_map):
+    '''
+    transform_data function is used to transform the data into a list of dictionaries
+    input : award_list
+    output : list of dictionaries
+    '''
+    logging.info("Transforming data into a list of dictionaries")
+    award_list = []
+    for actor in final_winners_list:
+        max_count = 0
+        final_award = ""
+        final_category = ""
+        for award, categories in winner_map[actor].items():
+            if type(categories) is dict:
+                for category, count in categories.items():
+                    if count > max_count:
+                        max_count = count
+                        final_award = award
+                        final_category = category
+            else:
+                if count > max_count:
+                    max_count = count
+                    final_award = award
+        award_list.append({
+            "award": final_award,
+            "category": final_category,
+            "winner": actor
+        })
+    logging.debug("Data transformation completed")
+    return award_list
+
+def find_award_cat_win(data_path):
+    '''
+    find_award_cat_win function is used to find the award, category and winner from the data_path.
+    input : data_path
+    output : list of award, category and winner
+    '''
+    logging.info("Starting award, category, winner search")
+    with open(data_path, "r") as f:
+        winner_map = {}
+        winners_list = {}
+        logging.info("Loading tweets from data_path")
+        tweets = f.read()
+        for tweet in tweets.splitlines():
+            regex = r'(winner|winners) for (Best.+?)(,|in a)(.*) (is|are) (.*)'
+            logging.debug(f"Trying first regex search {regex}")
+            search_result = re.search(regex, tweet)
+            if search_result:
+                award = search_result.group(2).strip()
+                category = search_result.group(4).strip()
+                winner_ner = ner_analysis(search_result.group(6))
+                extract_data(winner_ner, winners_list,
+                             winner_map, award, category)
+            logging.debug(f"First regex search completed")
+            
+            regex = r'(Best.+?)(,|in a)(.*) (is|are) (.*)'
+            logging.debug(f"Trying second regex search, {regex}")
+            search_result = re.search(regex, tweet)
+            if search_result:
+                award = search_result.group(1).strip()
+                category = search_result.group(3).strip()
+                winner_ner = ner_analysis(search_result.group(5))
+                extract_data(winner_ner, winners_list,
+                             winner_map, award, category)
+            logging.debug(f"Second regex search completed")
+
+            regex = r'([B|b]est.*)(,|in a)(.*) [G|g]oes to ([A-Za-z]* [A-Za-z]*)'
+            logging.debug(f"Trying third regex search, {regex}")
+            search_result = re.search(regex, tweet)
+            if search_result:
+                award = search_result.group(1).strip()
+                category = search_result.group(3).strip()
+                winner_ner = ner_analysis(search_result.group(4))
+                extract_data(winner_ner, winners_list, winner_map, award, category)
+            logging.debug(f"Third regex search completed")
+        
+        
+        # winners_list = {key: val for key, val in winners_list.items() if val > 2}
+        final_winners_list = validate_winners(winners_list)
+        award_list = transform_data(final_winners_list, winner_map)
+        logging.info("Award, Category, Winner search completed")
+        return award_list
+
+
+if __name__ == "__main__":
+    print(find_award_cat_win("winner.txt"))
