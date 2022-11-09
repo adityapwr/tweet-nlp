@@ -7,7 +7,7 @@ def find_nominiees(award, category):
         # search for nominees in the text
         text = f.read()
         # create a regex filter for nominees
-        regex = f'([N|n]omminiee|nomminies) for {award}.*{category} (is|are) (.*)'
+        regex = f'([N|n]ominee|[N|n]ominees) for {award}.*{category} (is|are) (.*)'
         matches =[]
         for line in text.splitlines():
             match = re.search(regex, line)

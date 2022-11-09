@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 import logging
+import sys
 
 '''
 check_actor function is used to check if the actor exists in the imdb database.
@@ -19,6 +20,7 @@ def check_actor(actor_name):
     if result.status_code == 200:
         soup = BeautifulSoup(result.text)
         all_models = soup.find_all("div", {"class": "lister-item mode-detail"})
+        print(all_models)
         if len(all_models) > 0:
             for single_model in all_models:
                 name = single_model.find_all("a")[1].text.lower().strip()
@@ -34,3 +36,7 @@ def check_actor(actor_name):
         # stop the programme
         exit(1)
 
+
+if __name__ == "__main__":
+    # Read argument
+    check_actor(sys.argv[1])
