@@ -57,8 +57,8 @@ def transform_data(final_winners_list, winner_map):
                         final_award = award
                         final_category = category
             else:
-                if count > max_count:
-                    max_count = count
+                if categories > max_count:
+                    max_count = categories
                     final_award = award
         award_list.append({
             "award": final_award,

@@ -15,6 +15,8 @@ import logging
 from host import find_host
 from winner import find_award_cat_win
 from presenters import find_presenters
+from nominations import find_nominations
+from utils import setup
 
 
 def transform_data(data_path, output_path):
@@ -40,11 +42,7 @@ def transform_data(data_path, output_path):
 
 
 if __name__ == '__main__':
-    # Loading the data from the file
-    # read data path from the --data argument from command line
-    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-                        level=logging.INFO,
-                        datefmt='%Y-%m-%d %H:%M:%S')
+    setup()
     logging.info(
         "******************Starting the tweet analysis************************")
     logging.info("Loading the datapath from the command line argument")
@@ -69,11 +67,12 @@ if __name__ == '__main__':
     awards = find_award_cat_win(output_path)
 
     # Finding the presenters
-    # find_presenters(output_path, awards)
+    awards_with_presenters = find_presenters(output_path, awards)
 
     # Finding the nominees
-    # find_nominees(output_path, awards)
-
+    awards_with_nominees = find_nominations(
+        output_path, awards_with_presenters)
+    
 
     with open('final_list.json', 'w') as f:
         json.dump({
@@ -81,5 +80,4 @@ if __name__ == '__main__':
             "awards": awards,
         }, f)
 
-    logging.info(
-        "******************Ending the tweet analysis************************")
+    logging.info("******************Ending the tweet analysis************************")

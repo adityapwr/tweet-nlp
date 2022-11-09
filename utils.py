@@ -1,11 +1,34 @@
+import pickle
 from bs4 import BeautifulSoup
 import requests
 import logging
-import sys
 import spacy
-
+import sys
 nlp = spacy.load("en_core_web_sm")
 
+IMDB_LOCAL_DB = 'imdb_file.pkl'
+
+
+def setup():
+    '''
+    setup function is used to setup the imdb database.
+    '''
+    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                        level=logging.DEBUG,
+                        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.info("Setting up the imdb database")
+
+    try:
+        imdb_file = open(IMDB_LOCAL_DB, 'rb')
+        inital_data = pickle.load(imdb_file)
+        imdb_file.close()
+    except EOFError:
+        inital_data = {}
+    logging.info(f"IMDB local data loaded: {inital_data}")
+    imdb_file = open(IMDB_LOCAL_DB, 'wb')
+    pickle.dump(inital_data, imdb_file, protocol=pickle.HIGHEST_PROTOCOL)
+    imdb_file.close()
+    logging.info("Imdb database setup completed")
 
 def ner_analysis(tweet):
     '''
@@ -25,8 +48,16 @@ def check_actor(actor_name):
     input : actor_name
     output : True if the actor exists in the imdb database else False
     '''
-    logging.info(f"Checking if the actor exists in the imdb database, {actor_name}")
+    imdb_file = open(IMDB_LOCAL_DB, 'rb')
+    imdb_checks = pickle.load(imdb_file)
+    imdb_file.close()
+
+    logging.info(
+        f"Checking if the actor, {actor_name} exists in the imdb database")
     actor_name = actor_name.lower().strip()
+    if actor_name in imdb_checks.keys():
+        logging.debug("Actor exists in the local imdb database")
+        return imdb_checks[actor_name]
     search_name = actor_name.replace(" ", "+")
     result = requests.get(
         f"https://www.imdb.com/search/name/?name={search_name}")
@@ -42,40 +73,31 @@ def check_actor(actor_name):
                 if name == actor_name and role_type in ["actor", "actress", "director"]:
                     logging.debug(
                         f"{role_type} exists in the imdb database, {actor_name}")
+                    imdb_checks[actor_name] = True
+                    imdb_file = open(IMDB_LOCAL_DB, 'wb')
+                    pickle.dump(
+                        imdb_checks, imdb_file, protocol=pickle.HIGHEST_PROTOCOL)
+                    imdb_file.close()
                     return True
+
         logging.debug(
             f"Role does not exists in the imdb database, {actor_name}")
+        imdb_checks[actor_name] = False
+        imdb_file = open(IMDB_LOCAL_DB, 'wb')
+        pickle.dump(
+            imdb_checks, imdb_file, protocol=pickle.HIGHEST_PROTOCOL)
+        imdb_file.close()
         return False
     else:
-        logging.critical("Error in fetching the url, please check the url/ internet connection")
-        # stop the programme
+        logging.error(f"Error in the request, {result.status_code}")
+        # stop the programme if the request fails
         exit(1)
 
-
-def find_all_names_data(data_path):
-    '''
-    find_all_names_data function is used to find all the names from the data_path.
-    input : data_path
-    output : list of names
-    '''
-    logging.info(f"Finding all the names from the data_path, {data_path}")
-    names = []
-    with open(data_path, 'r') as data_file:
-        for tweet in data_file:
-            ## extract regex if it matches First name Last name
-            regex = f'([A-Z][a-z]+ [A-Z][a-z]+)'
-            ner_matches = ner_analysis(tweet)
-            for ner_match in ner_matches:
-                if ner_match.label_ == 'PERSON':
-                    match = ner_match.text
-                    names.append(match)
-    logging.debug(f"Names found from the data_path, {data_path}")
-    return names
 
 if __name__ == "__main__":
     # Read argument
     # check_actor(sys.argv[1])
     # ner_analysis(sys.argv[1])
+    setup()
     logging.basicConfig(level=logging.DEBUG)
-    with open ('all_names.txt', 'r') as f:
-        f.write([f'{name}\n' for name in find_all_names_data('clean_tweet_data.txt')])
+    check_actor(sys.argv[1])
