@@ -8,7 +8,8 @@ nlp = spacy.load('en_core_web_sm')
 
 
 def find_presenter(award, category):
-    regex = f'([P|p]resenter|[P|p]resenters|[P|p]resents).*({award}.*{category}|{award}|{category})'
+    #regex = f'([P|p]resenter|[P|p]resenters|[P|p]resents).*({award}.*{category}|{award}|{category})'
+    regex = f'([P|p]resent\w+).*({award}.*{category}|{award}|{category})'
     logging.info(f'Starting Regex search')
     logging.info(f'Current Search Regex: {regex}')
     presenters = {}
