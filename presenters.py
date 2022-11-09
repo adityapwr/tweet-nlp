@@ -10,14 +10,38 @@ nlp = spacy.load('en_core_web_sm')
 
 
 def calculate_ratio(award, cat, winner, tweet):
-    # award_count = 0
-    # cat_count = 0
-    # winner_count = 0
-    award_ratio = difflib.SequenceMatcher(tweet, award).ratio()
-    cat_ratio = difflib.SequenceMatcher(tweet, cat).ratio()
-    winner_ratio = 1 if winner in tweet else 0
-    return (award_ratio+cat_ratio+winner_ratio)/3
-    # return ( + cat_count/(len(cat)) + winner_count)/3
+
+    award_count = 0
+    cat_count = 0
+    winner_count = 0
+    regex = f'{winner}'
+    if re.search(regex, tweet):
+        return 1
+    regex = f'{award}'
+    if re.search(regex, tweet):
+        award_count += 1
+    regex = f'{cat}'
+    if re.search(regex, tweet):
+        cat_count += 1
+    if len(cat) == 0:
+        return 0
+    if winner in tweet:
+        return 1
+    for word in award.split():
+        if word in tweet:
+            award_count += 1
+    for word in cat.split():
+        if word in tweet:
+            cat_count += 1
+    print(award_count/len(award), cat_count/len(cat))
+    if award_count/len(award) > 0.5 or cat_count/len(cat) > 0.5:
+        return 1
+    return 0
+
+    # cat_ratio = difflib.SequenceMatcher(tweet, cat).ratio()
+    # winner_ratio = 1 if winner in tweet else 0
+    # return (award_ratio+cat_ratio+winner_ratio)/3
+    # # return ( + cat_count/(len(cat)) + winner_count)/3
 
 
 
@@ -36,7 +60,7 @@ def find_presenters(data_path, awards):
         
     with open(data_path, 'r') as data_file:
         for tweet in data_file:
-            regex = f'[P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .* (B|b)est'
+            regex = f'([P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .* ([B|b]est .)'
             # regex = f'([P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .*award'
             if re.search(regex, tweet):
                 diff_score = []
@@ -53,30 +77,31 @@ def find_presenters(data_path, awards):
                 matches = []
                 max_score = max(diff_score)
                 award_index = diff_score.index(max_score)
-                ner_matches = ner_analysis(tweet)
-                for ner_match in ner_matches:
-                    if ner_match.label_ == 'PERSON':
-                        match = ner_match.text.lower().strip()
-                        if match in imdb_checks.keys():
-                            if imdb_checks[match]:
-                                matches.append(match)
-                        else:
-                            if check_actor(match):
-                                matches.append(match.title())
-                                imdb_checks[match] = True
+                if max_score == 1:
+                    ner_matches = ner_analysis(tweet)
+                    for ner_match in ner_matches:
+                        if ner_match.label_ == 'PERSON':
+                            match = ner_match.text.lower().strip()
+                            if match in imdb_checks.keys():
+                                if imdb_checks[match]:
+                                    matches.append(match)
                             else:
-                                imdb_checks[match] = False
-                            
-                # Find the max diff_score and get the award and category
+                                if check_actor(match):
+                                    matches.append(match.title())
+                                    imdb_checks[match] = True
+                                else:
+                                    imdb_checks[match] = False
+                                
+                    # Find the max diff_score and get the award and category
 
-                # get presenters and add the presenters count from matches to presenters
-                awards[award_index]["presenters"] = awards[award_index].get(
-                    "presenters", {})
-                for match in matches:
-                    if match in awards[award_index]["presenters"] and match not in winners:
-                        awards[award_index]["presenters"][match] += 1
-                    else:
-                        awards[award_index]["presenters"][match] = 1
+                    # get presenters and add the presenters count from matches to presenters
+                    awards[award_index]["presenters"] = awards[award_index].get(
+                        "presenters", {})
+                    for match in matches:
+                        if match in awards[award_index]["presenters"] and match not in winners:
+                            awards[award_index]["presenters"][match] += 1
+                        else:
+                            awards[award_index]["presenters"][match] = 1
     with open("imdb_checks.json", 'w') as imdb_file:
         json.dump(imdb_checks, imdb_file)   
     return awards
