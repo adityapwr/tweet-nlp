@@ -31,7 +31,7 @@ def check_actor(actor_name):
     result = requests.get(
         f"https://www.imdb.com/search/name/?name={search_name}")
     if result.status_code == 200:
-        soup = BeautifulSoup(result.text)
+        soup = BeautifulSoup(result.text, features="html.parser")
         all_models = soup.find_all("div", {"class": "lister-item mode-detail"})
         if len(all_models) > 0:
             for single_model in all_models:
@@ -62,6 +62,8 @@ def find_all_names_data(data_path):
     names = []
     with open(data_path, 'r') as data_file:
         for tweet in data_file:
+            ## extract regex if it matches First name Last name
+            regex = f'([A-Z][a-z]+ [A-Z][a-z]+)'
             ner_matches = ner_analysis(tweet)
             for ner_match in ner_matches:
                 if ner_match.label_ == 'PERSON':

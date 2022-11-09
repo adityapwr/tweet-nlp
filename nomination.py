@@ -9,16 +9,12 @@ import multiprocessing
 nlp = spacy.load('en_core_web_sm')
 
 
-def calculate_ratio(award, cat, winner, tweet):
-    # award_count = 0
-    # cat_count = 0
-    # winner_count = 0
-    award_ratio = difflib.SequenceMatcher(tweet, award).ratio()
-    cat_ratio = difflib.SequenceMatcher(tweet, cat).ratio()
-    winner_ratio = 1 if winner in tweet else 0
-    return (award_ratio+cat_ratio+winner_ratio)/3
-    # return ( + cat_count/(len(cat)) + winner_count)/3
-
+def calculate_ratio(str1, str2):
+    count = 0
+    for word in str1.split():
+        if word in str2:
+            count += 1
+    return count / len(str1)
 
 
 def find_presenters(data_path, awards):
@@ -36,17 +32,19 @@ def find_presenters(data_path, awards):
         
     with open(data_path, 'r') as data_file:
         for tweet in data_file:
-            regex = f'[P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .* (B|b)est'
-            # regex = f'([P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .*award'
+            regex = f'([P|p]resen\w+|[A|a]nnounc\w+|[I|i]ntroduc\w+) .*award'
             if re.search(regex, tweet):
                 diff_score = []
                 winners = []
+                # tweet_vector = ' '.join([word for word in tweet.lower(
+                # ).split() if word not in nlp.Defaults.stop_words])
                 for award in awards:
                     # remove stop words
                     # award_vector = ' '.join([word for word in f'{award["award"].lower()} {award["category"]}'.split() if word not in nlp.Defaults.stop_words])
                     # diff_score.append(
                     #     difflib.SequenceMatcher(tweet_vector, award_vector).ratio())
-                    diff_score.append(calculate_ratio(award["award"].lower(), award["category"].lower(), award["winner"], tweet.lower()))
+                    diff_score.append(calculate_ratio(
+                        f'{award["award"].lower()} {award["category"].lower()}', tweet.lower()))
                     winners.append(award["winner"])
                 print(diff_score)
 
