@@ -61,6 +61,7 @@ def transform_data(final_winners_list, winner_map):
                     max_count = categories
                     final_award = award
         award_list.append({
+            "award_name": f'{final_award} - {final_category}',
             "award": final_award,
             "category": final_category,
             "winner": actor
@@ -74,6 +75,7 @@ def find_award_cat_win(data_path):
     input : data_path
     output : list of award, category and winner
     '''
+
     logging.info("Starting award, category, winner search")
     with open(data_path, "r") as f:
         winner_map = {}

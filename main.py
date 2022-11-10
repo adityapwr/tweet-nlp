@@ -19,12 +19,12 @@ from nominations import find_nominations
 from utils import setup
 
 
-def transform_data(data_path, output_path):
+def transform_data(json_file_path, data_path):
     '''
     Transform_data function is used to transform the json data and store it in a different file as txt.
     '''
     logging.info("Transforming the data")
-    with open(data_path, 'r') as json_file:
+    with open(json_file_path, 'r') as json_file:
         logging.info("Loading the data from the file")
         json_data = json.load(json_file)
 
@@ -33,7 +33,7 @@ def transform_data(data_path, output_path):
         exit(1)
 
     # Transforming the data
-    with open(output_path, 'w') as f:
+    with open(data_path, 'w') as f:
         logging.info("Transforming the data")
         for tweet in json_data:
             f.write(
@@ -46,38 +46,42 @@ if __name__ == '__main__':
     logging.info(
         "******************Starting the tweet analysis************************")
     logging.info("Loading the datapath from the command line argument")
-    data_path = sys.argv[1]
-    if data_path is None:
+    json_file_path = sys.argv[1]
+    if json_file_path is None:
         logging.critical("Please provide the datapath")
         exit(1)
-    logging.info(f"Data path is {data_path}")
+    logging.info(f"Data path is {json_file_path}")
     # read output path from the --output argument from command line
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "clean_tweet_data.txt"
-    logging.info(f"Output path is {output_path}")
+    output_json_path = sys.argv[2]
+    logging.info(f"Output path is {output_json_path}")
+
+    # Intermidiate data path
+    data_path = sys.argv[3]
+    logging.info(f"Data path is {data_path}")
 
     # Transforming the data
-    transform_data(data_path, output_path)
+    transform_data(json_file_path, data_path)
 
     # Finding the hosts
-    hosts = find_host(output_path)
+    hosts = find_host(data_path)
     logging.info(f"Hosts found are {hosts}")
 
     # Finding the awards, categories and winners
-    # actors = find_actors(output_path)
-    awards = find_award_cat_win(output_path)
+    # actors = find_actors(data_path)
+    awards = find_award_cat_win(data_path)
 
     # Finding the presenters
-    awards_with_presenters = find_presenters(output_path, awards)
+    awards_with_presenters = find_presenters(data_path, awards)
 
     # Finding the nominees
     awards_with_nominees = find_nominations(
-        output_path, awards_with_presenters)
-    
+        data_path, awards_with_presenters)
 
-    with open('final_list.json', 'w') as f:
+    with open(output_json_path, 'w') as f:
         json.dump({
             "hosts": hosts,
             "awards": awards,
         }, f)
 
-    logging.info("******************Ending the tweet analysis************************")
+    logging.info(
+        "******************Ending the tweet analysis************************")

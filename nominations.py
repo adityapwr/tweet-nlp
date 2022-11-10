@@ -18,17 +18,36 @@ def find_nominations(data_path, awards):
             logging.debug(f"Finding nominations for {award['award']}")
             nominations = {}
             for tweet in data_file:
-                presenter_search = re.search(rf"- [0-9]+ - (.*) ([N|n]omin\w+) for {award['award']}.*{award['category']}", tweet)
-                # print(presenter_search)
-                print(presenter_search)
-                if presenter_search:
-                    print(presenter_search.group(1))
-                    presenter = presenter_search.group(1)
-                    presenter_ner = ner_analysis(presenter)
-                    for ent in presenter_ner:
+                nomination_search = re.search(
+                    rf"- [0-9]+ - (.*) ([N|n]omin\w+) for {award['award']}.*{award['category']}", tweet, re.IGNORECASE)
+                if nomination_search:
+                    nominiee = nomination_search.group(1)
+                    nominiee_ner = ner_analysis(nominiee)
+                    for ent in nominiee_ner:
                         if ent.label_ == 'PERSON':
                             if check_actor(ent.text.lower()):
-                                nominations[ent.text] = nominations.get(ent.text, 0) + 1
+                                nominations[ent.text] = nominations.get(
+                                    ent.text, 0) + 1
+                nomination_search = re.search(
+                    rf".*{award['award']}.*{award['category']}.*([N|n]omin\w+) (is|are) (.*)", tweet, re.IGNORECASE)
+                if nomination_search:
+                    nominiee = nomination_search.group(3)
+                    nominiee_ner = ner_analysis(nominiee)
+                    for ent in nominiee_ner:
+                        if ent.label_ == 'PERSON':
+                            if check_actor(ent.text.lower()):
+                                nominations[ent.text] = nominations.get(
+                                    ent.text, 0) + 1
+                nomination_search = re.search(
+                    rf"([N|n]omin\w+) for {award['award']}.*{award['category']}(.*)", tweet, re.IGNORECASE)
+                if nomination_search:
+                    nominiee = nomination_search.group(2)
+                    nominiee_ner = ner_analysis(nominiee)
+                    for ent in nominiee_ner:
+                        if ent.label_ == 'PERSON':
+                            if check_actor(ent.text.lower()):
+                                nominations[ent.text] = nominations.get(
+                                    ent.text, 0) + 1
             award['nominations'] = nominations
     return awards
 
@@ -37,6 +56,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     with open('final_list.json', 'r') as f:
         data = json.load(f)
-        logging.info("Starting presenter debugger")
+        logging.info("Starting nominiee debugger")
         print(json.dumps(find_nominations(
             'clean_tweet_data.txt', data["awards"]), indent=4))

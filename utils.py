@@ -14,7 +14,7 @@ def setup():
     setup function is used to setup the imdb database.
     '''
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-                        level=logging.DEBUG,
+                        level=logging.INFO,
                         datefmt='%Y-%m-%d %H:%M:%S')
     logging.info("Setting up the imdb database")
 
@@ -56,7 +56,7 @@ def check_actor(actor_name):
         f"Checking if the actor, {actor_name} exists in the imdb database")
     actor_name = actor_name.lower().strip()
     if actor_name in imdb_checks.keys():
-        logging.debug("Actor exists in the local imdb database")
+        logging.info("Actor exists in the local imdb database")
         return imdb_checks[actor_name]
     search_name = actor_name.replace(" ", "+")
     result = requests.get(
